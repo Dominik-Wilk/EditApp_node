@@ -1,0 +1,14 @@
+{
+  "name": "dominik",
+  "version": "1",
+  "description": "Name",
+  "main": "1",
+  "repository": "1",
+  "author": "Dominik",
+  "license": "1",
+  "private": true,
+  "dependencies": {
+    "inquirer": "6.5.0",
+    "jimp": "0.6.4"
+  }
+}
