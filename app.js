@@ -49,7 +49,7 @@ const addImageWatermarkToImage = async function (
 
 const prepareOutputFilename = inputFile => {
   const filename = inputFile.split('.');
-  const newName = `${filename[0]}-with-watermark.${filename[1]}`;
+  const newName = `${filename[0]}-edited.${filename[1]}`;
 
   return newName;
 };
@@ -74,54 +74,150 @@ const startApp = async () => {
       default: 'test.jpg',
     },
     {
-      name: 'watermarkType',
+      name: 'editType',
       type: 'list',
-      choices: ['Text watermark', 'Image watermark'],
+      choices: [
+        'Change brightness',
+        'Increase contrast',
+        'Make image B&W',
+        'Invert image',
+        'Add watermark',
+      ],
     },
   ]);
 
-  if (options.watermarkType === 'Text watermark') {
-    const text = await inquirer.prompt([
+  if (options.editType === 'Add watermark') {
+    const watermark = await inquirer.prompt([
       {
-        name: 'value',
-        type: 'input',
-        message: 'Type your watermark text:',
+        name: 'watermarkType',
+        type: 'list',
+        choices: ['Text watermark', 'Image watermark'],
       },
     ]);
-    options.watermarkText = text.value;
 
-    if (fs.existsSync(`./img/${options.inputImage}`)) {
-      addTextWatermarkToImage(
-        './img/' + options.inputImage,
-        './img/' + prepareOutputFilename(options.inputImage),
-        options.watermarkText
-      );
+    if (watermark.watermarkType === 'Text watermark') {
+      const text = await inquirer.prompt([
+        {
+          name: 'value',
+          type: 'input',
+          message: 'Type your watermark text:',
+        },
+      ]);
+      options.watermarkText = text.value;
+
+      if (fs.existsSync(`./img/${options.inputImage}`)) {
+        addTextWatermarkToImage(
+          './img/' + options.inputImage,
+          './img/' + prepareOutputFilename(options.inputImage),
+          options.watermarkText
+        );
+      } else {
+        console.log('Something went wrong... Try again');
+        process.exit();
+      }
     } else {
-      console.log('Something went wrong... Try again ');
-      process.exit();
+      const image = await inquirer.prompt([
+        {
+          name: 'filename',
+          type: 'input',
+          message: 'Type your watermark name:',
+          default: 'logo.png',
+        },
+      ]);
+      options.watermarkImage = image.filename;
+      if (
+        fs.existsSync(`./img/${options.inputImage}`) &&
+        fs.existsSync(`./img/${options.watermarkImage}`)
+      ) {
+        addImageWatermarkToImage(
+          './img/' + options.inputImage,
+          './img/' + prepareOutputFilename(options.inputImage),
+          './img/' + options.watermarkImage
+        );
+      } else {
+        console.log('Something went wrong... Try again');
+        process.exit();
+      }
     }
-  } else {
-    const image = await inquirer.prompt([
+  } else if (options.editType === 'Change brightness') {
+    const brightnessQuestion = await inquirer.prompt([
       {
-        name: 'filename',
+        name: 'brightnessValue',
         type: 'input',
-        message: 'Type your watermark name:',
-        default: 'logo.png',
+        message: 'Enter the brightnes value (max value = 1, min value = -1)',
+        validate: function (value) {
+          const parsedValue = parseFloat(value);
+          return !isNaN(parsedValue);
+        },
       },
     ]);
-    options.watermarkImage = image.filename;
-    if (
-      fs.existsSync(`./img/${options.inputImage}`) &&
-      fs.existsSync(`./img/${options.watermarkImage}`)
-    ) {
-      addImageWatermarkToImage(
-        './img/' + options.inputImage,
-        './img/' + prepareOutputFilename(options.inputImage),
-        './img/' + options.watermarkImage
-      );
-    } else {
-      console.log('Something went wrong... Try again ');
-      process.exit();
+    try {
+      const inputImage = await Jimp.read(`./img/${options.inputImage}`);
+      const brightnessValue = parseFloat(brightnessQuestion.brightnessValue);
+
+      if (!isNaN(brightnessValue)) {
+        inputImage.brightness(brightnessValue);
+        await inputImage
+          .quality(100)
+          .writeAsync(`./img/${prepareOutputFilename(options.inputImage)}`);
+        console.log('Brightness changed successfully');
+      } else {
+        console.log('Invalid brightness value. Please enter a valid number.');
+      }
+      await startApp();
+    } catch (error) {
+      console.log('Something went wrong... Try again');
+    }
+  } else if (options.editType === 'Increase contrast') {
+    const contrastQuestion = await inquirer.prompt([
+      {
+        name: 'contrastValue',
+        type: 'input',
+        message: 'Enter the contrast value (max value = 1, min value = -1)',
+        validate: function (value) {
+          const parsedValue = parseFloat(value);
+          return !isNaN(parsedValue);
+        },
+      },
+    ]);
+    try {
+      const inputImage = await Jimp.read(`./img/${options.inputImage}`);
+      const contrastValue = parseFloat(contrastQuestion.contrastValue);
+
+      if (!isNaN(contrastValue)) {
+        inputImage.contrast(contrastValue);
+        await inputImage
+          .quality(100)
+          .writeAsync(`./img/${prepareOutputFilename(options.inputImage)}`);
+        console.log('Contrast changed successfully');
+      } else {
+        console.log('Invalid contrast value. Please enter a valid number.');
+      }
+      await startApp();
+    } catch (error) {
+      console.log('Something went wrong... Try again');
+    }
+  } else if (options.editType === 'Make image B&W') {
+    try {
+      const inputImage = await Jimp.read(`./img/${options.inputImage}`);
+      inputImage.greyscale();
+      await inputImage
+        .quality(100)
+        .writeAsync(`./img/${prepareOutputFilename(options.inputImage)}`);
+      console.log('Colours remove successfully');
+    } catch (error) {
+      console.log('Something went wrong... Try again');
+    }
+  } else if (options.editType === 'Invert image') {
+    try {
+      const inputImage = await Jimp.read(`./img/${options.inputImage}`);
+      inputImage.invert();
+      await inputImage
+        .quality(100)
+        .writeAsync(`./img/${prepareOutputFilename(options.inputImage)}`);
+      console.log('Colours inverted successfully');
+    } catch (error) {
+      console.log('Something went wrong... Try again');
     }
   }
 };
